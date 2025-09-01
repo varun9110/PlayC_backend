@@ -113,11 +113,11 @@ router.post('/onboard-academy', async (req, res) => {
 
     console.log(mailOptions)
 
-    res.json({ message: 'Academy onboarded and emailed.', mailOptions });
+    res.json({ message: 'Academy onboarded and emailed.', mailOptions, success: true });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -138,6 +138,18 @@ router.post('/configure', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
+  }
+});
+
+
+router.get("/getDetails", async (req, res) => {
+  const { email, sports } = req.query;
+  try {
+    const academy = await Academy.findOne({ email });
+    res.status(200).json({academy, success: true});
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server Error" });
   }
 });
 

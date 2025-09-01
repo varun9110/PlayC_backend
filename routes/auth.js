@@ -162,9 +162,14 @@ router.post('/verify-otp', async (req, res) => {
 
 // Login user (only verified users)
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
-
+  const { email, phone, password } = req.body;
+  
+  let user;
+  if (email !== "") {
+    user = await User.findOne({ email });
+  } else if (phone !== "") {
+    user = await User.findOne({ phone });
+  }
   if (!user || !user.isVerified) {
     return res.status(400).json({ message: 'Invalid credentials or not verified' });
   }
