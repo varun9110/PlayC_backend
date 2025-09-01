@@ -8,6 +8,56 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 // Register user - send OTP
+
+/**
+ * @swagger
+ * /register:
+ *   post:
+ *     summary: Register a new user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *                 format: password
+ *               phone:
+ *                 type: string
+ *                 format: phone
+ *     responses:
+ *       200:
+ *         description: OTP sent to phone number
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: OTP sent to phone number
+ *                 success:
+ *                   type: string
+ *                   example: otp created
+ *       400:
+ *         description: User with given email or phone already exists
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User with given email or phone already exists
+ *                 error:
+ *                   type: string
+ *                   example: User exists
+ */
 router.post('/register', async (req, res) => {
   try {
     const { email, password, phone } = req.body;
@@ -38,19 +88,64 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Verify OTP and activate user
+/**
+ * @swagger
+ * /verify-otp:
+ *   post:
+ *     summary: Verify OTP and activate user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               otp:
+ *                 type: string
+ *                 format: otp
+ *     responses:
+ *       200:
+ *         description: User verified successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User verified successfully
+ *                 success:
+ *                   type: string
+ *                   example: User verified successfully
+ *       400:
+ *         description: Invalid or expired OTP
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Invalid or expired OTP
+ *                 error:
+ *                   type: string
+ *                   example: User not verified
+ */
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required', error: "Email and OTP required" });
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: 'User not found' });
+    if (!user) return res.status(400).json({ message: 'User not found', error: "User not found" });
 
-    if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+    if (user.isVerified) return res.status(400).json({ message: 'User already verified', error: "User already verified" });
 
     if (user.otp !== otp || user.otpExpiry < new Date()) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
+      return res.status(400).json({ message: 'Invalid or expired OTP', error: "Invalid or expired OTP" });
     }
 
     user.isVerified = true;
@@ -58,10 +153,10 @@ router.post('/verify-otp', async (req, res) => {
     user.otpExpiry = null;
     await user.save();
 
-    res.json({ message: 'User verified successfully' });
+    res.json({ message: 'User verified successfully', success: "User verified successfully" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: "Server error" });
   }
 });
 

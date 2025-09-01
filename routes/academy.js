@@ -8,6 +8,36 @@ const Academy = require('../models/Academy');
 const User = require('../models/User');
 
 // POST /admin/onboard-academy
+/**
+ * @swagger
+ * /admin/onboard-academy:
+ *   post:
+ *     summary: Onboard a new academy
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               phone:
+ *                 type: string
+ *                 format: phone
+ *               address:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Academy onboarded successfully
+ *       400:
+ *         description: Bad request
+ */
 router.post('/onboard-academy', async (req, res) => {
   try {
     const {

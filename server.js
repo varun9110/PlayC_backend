@@ -19,7 +19,8 @@ app.use('/api/booking', bookingRoutes);
 const activityRoutes = require('./routes/activity');
 app.use('/api/activity', activityRoutes);
 
-
+const setupSwagger = require('./swagger');
+setupSwagger(app);
 
 const PORT = process.env.PORT || 5000;
 
