@@ -7,12 +7,25 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
-// Register user - send OTP
+/**
+ * @swagger
+ * tags:
+ *   - name: Auth
+ *     description: User authentication and authorization APIs
+ *
+ * components:
+ *   securitySchemes:
+ *     BearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
 
 /**
  * @swagger
  * /register:
  *   post:
+ *     tags: [Auth]
  *     summary: Register a new user
  *     requestBody:
  *       required: true
@@ -33,35 +46,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
  *     responses:
  *       200:
  *         description: OTP sent to phone number
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: OTP sent to phone number
- *                 success:
- *                   type: string
- *                   example: otp created
  *       400:
  *         description: User with given email or phone already exists
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: User with given email or phone already exists
- *                 error:
- *                   type: string
- *                   example: User exists
  */
 router.post('/register', async (req, res) => {
   try {
     const { email, password, phone } = req.body;
-    if (!email || !password || !phone) return res.status(400).json({ message: 'All fields are required', error: "All fields required" });
+    if (!email || !password || !phone) {
+      return res.status(400).json({ message: 'All fields are required', error: "All fields required" });
+    }
 
     // Check if user exists
     let user = await User.findOne({ $or: [{ email }, { phone }] });
@@ -92,6 +85,7 @@ router.post('/register', async (req, res) => {
  * @swagger
  * /verify-otp:
  *   post:
+ *     tags: [Auth]
  *     summary: Verify OTP and activate user
  *     requestBody:
  *       required: true
@@ -109,35 +103,15 @@ router.post('/register', async (req, res) => {
  *     responses:
  *       200:
  *         description: User verified successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: User verified successfully
- *                 success:
- *                   type: string
- *                   example: User verified successfully
  *       400:
  *         description: Invalid or expired OTP
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Invalid or expired OTP
- *                 error:
- *                   type: string
- *                   example: User not verified
  */
 router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required', error: "Email and OTP required" });
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required', error: "Email and OTP required" });
+    }
 
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'User not found', error: "User not found" });
@@ -160,7 +134,51 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
-// Login user (only verified users)
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login user (only after verification)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: test@example.com
+ *               phone:
+ *                 type: string
+ *                 format: phone
+ *                 example: "1234567890"
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: "password123"
+ *     responses:
+ *       200:
+ *         description: User logged in successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   description: JWT access token
+ *                 email:
+ *                   type: string
+ *                 phone:
+ *                   type: string
+ *                 role:
+ *                   type: string
+ *       400:
+ *         description: Invalid credentials or not verified
+ */
 router.post('/login', async (req, res) => {
   const { email, phone, password } = req.body;
   
