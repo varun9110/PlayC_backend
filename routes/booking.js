@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Booking = require('../models/Booking');
 const Academy = require('../models/Academy');
+const { isTimeOverlap, timeToMinutes, calculatePrice } = require('../utils/helperFunctions');
 
 router.post('/create', async (req, res) => {
   const { userEmail, academyId, sport, courtNumber, date, startTime, endTime } = req.body;
@@ -42,47 +43,85 @@ router.post('/create', async (req, res) => {
 });
 
 router.post('/search', async (req, res) => {
-  const { city, sport, startTime, endTime, date } = req.body;
+  const { city, sport, date } = req.body;
+
+  if (!city || !sport || !date) {
+      return res.status(400).json({ message: "City and sport are required" });
+    }
 
   try {
-    const academies = await Academy.find({ city });
-    const bookings = await Booking.find({ date, startTime });
+    // Find academies in the city that have the sport
+    const academies = await Academy.find({
+      city: city.toLowerCase(),
+      "sports.sportName": sport
+    });
 
-    const results = academies.map(academy => {
-      const sportData = academy.sports.find(s => s.sportName === sport);
-      if (!sportData) return null;
-
-      const courts = sportData.pricing.map(court => {
-        const isBooked = bookings.some(b =>
-          b.academyId.toString() === academy._id.toString() &&
-          b.sport === sport &&
-          b.courtNumber === court.courtNumber
-        );
-        if (!isBooked) {
-          return {
-            courtNumber: court.courtNumber,
-            price: court.prices.find(p => p.time === startTime)?.price || 0
-          };
-        }
-        return null;
-      }).filter(Boolean);
-
-      if (courts.length > 0) {
-        return {
-          _id: academy._id,
-          name: academy.name,
-          city: academy.city,
-          courts
-        };
-      }
-
-      return null;
-    }).filter(Boolean);
-
-    res.json(results);
+    res.status(200).json({ academies });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Search failed' });
+  }
+});
+
+// API: Get available courts
+router.post('/check-availability', async (req, res) => {
+   try {
+    const { academyId, sport, date, startTime, duration } = req.body;
+
+    const academy = await Academy.findById(academyId);
+    if (!academy) return res.status(404).json({ message: 'Academy not found' });
+
+    const sportData = academy.sports.find((s) => s.sportName === sport);
+    if (!sportData) return res.status(404).json({ message: 'Sport not found in this academy' });
+
+    const courts = [];
+    const requestedStart = timeToMinutes(startTime);
+    const requestedEnd = requestedStart + duration;
+    const academyStart = timeToMinutes(sportData.startTime);
+    const academyEnd = timeToMinutes(sportData.endTime);
+
+    for (let i = 1; i <= sportData.numberOfCourts; i++) {
+      // Check if requested time is within court operating hours
+      if (requestedStart < academyStart || requestedEnd > academyEnd) {
+        courts.push({ courtNumber: i, available: false, price: 0 });
+        continue;
+      }
+
+      // Find existing bookings for this court
+      const bookings = await Booking.find({
+        academyId,
+        sport,
+        courtNumber: i,
+        date,
+      });
+
+      // Check if any booking overlaps
+      let available = true;
+      for (let b of bookings) {
+        const bookingStart = timeToMinutes(b.startTime);
+        const bookingEnd = timeToMinutes(b.endTime);
+        if (isTimeOverlap(requestedStart, requestedEnd, bookingStart, bookingEnd)) {
+          available = false;
+          break;
+        }
+      }
+
+      // Calculate price for the requested duration
+      let price = 0;
+      if (available) {
+        const courtPricing = sportData.pricing.find((p) => p.courtNumber === i);
+        if (courtPricing) {
+          price = calculatePrice(courtPricing.prices, startTime, duration);
+        }
+      }
+
+      courts.push({ courtNumber: i, available, price });
+    }
+
+    res.json({ courts });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
