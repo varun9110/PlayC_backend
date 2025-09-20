@@ -125,9 +125,11 @@ router.post('/check-availability', async (req, res) => {
   }
 });
 
-router.get('/my-bookings/:userEmail', async (req, res) => {
+router.post('/my-bookings', async (req, res) => {
   try {
-    const bookings = await Booking.find({ userEmail: req.params.userEmail }).populate('academyId', 'name address city');
+    const { userEmail } = req.body;
+    const bookings = await Booking.find({ userEmail })
+      .populate('academyId', 'name address city');
     res.json(bookings);
   } catch (err) {
     console.error(err);
