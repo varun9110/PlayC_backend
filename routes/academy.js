@@ -14,6 +14,7 @@ const { capitalizeWords } = require('../utils/helperFunctions');
  * /admin/onboard-academy:
  *   post:
  *     summary: Onboard a new academy
+ *     tags: [Academy]
  *     requestBody:
  *       required: true
  *       content:
@@ -122,6 +123,70 @@ router.post('/onboard-academy', async (req, res) => {
   }
 });
 
+// POST /admin/configure
+/**
+ * @swagger
+ * /admin/configure:
+ *   post:
+ *     summary: Configure sports and courts for an academy
+ *     tags: [Academy]
+ *     description: Update the sports configuration of an academy by providing email and sports array.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - sports
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Academy's registered email
+ *               sports:
+ *                 type: array
+ *                 description: List of sports with courts and pricing
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     sportName:
+ *                       type: string
+ *                     numberOfCourts:
+ *                       type: integer
+ *                     startTime:
+ *                       type: string
+ *                       example: "06:00"
+ *                     endTime:
+ *                       type: string
+ *                       example: "22:00"
+ *                     pricing:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           courtNumber:
+ *                             type: integer
+ *                           prices:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 time:
+ *                                   type: string
+ *                                   example: "10:00"
+ *                                 price:
+ *                                   type: number
+ *                                   example: 20
+ *     responses:
+ *       200:
+ *         description: Academy updated successfully
+ *       404:
+ *         description: Academy not found
+ *       500:
+ *         description: Server error
+ */
 router.post('/configure', async (req, res) => {
   const { email, sports } = req.body;
 
@@ -142,9 +207,31 @@ router.post('/configure', async (req, res) => {
   }
 });
 
-
+// GET /admin/getDetails
+/**
+ * @swagger
+ * /admin/getDetails:
+ *   get:
+ *     summary: Get academy details
+ *     tags: [Academy]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Academy's email
+ *     responses:
+ *       200:
+ *         description: Academy details retrieved successfully
+ *       404:
+ *         description: Academy not found
+ *       500:
+ *         description: Server error
+ */
 router.get("/getDetails", async (req, res) => {
-  const { email, sports } = req.query;
+  const { email } = req.query;
   try {
     const academy = await Academy.findOne({ email });
     res.status(200).json({academy, success: true});
@@ -154,14 +241,22 @@ router.get("/getDetails", async (req, res) => {
   }
 });
 
-
-
+// GET /admin/locations
+/**
+ * @swagger
+ * /admin/locations:
+ *   get:
+ *     summary: Get unique cities and addresses of academies
+ *     tags: [Academy]
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved locations
+ *       500:
+ *         description: Server error
+ */
 router.get("/locations", async (req, res) => {
   try {
-    // Get distinct cities
     const cities = await Academy.distinct("city");
-
-    // If you also want unique addresses (per city)
     const addresses = await Academy.aggregate([
       {
         $group: {
@@ -187,7 +282,28 @@ router.get("/locations", async (req, res) => {
   }
 });
 
-// GET unique sports list for a city
+// GET /admin/sports/:city
+/**
+ * @swagger
+ * /admin/sports/{city}:
+ *   get:
+ *     summary: Get unique sports available in a city
+ *     tags: [Academy]
+ *     parameters:
+ *       - in: path
+ *         name: city
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: City name
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved sports
+ *       404:
+ *         description: No sports found for this city
+ *       500:
+ *         description: Server error
+ */
 router.get("/sports/:city", async (req, res) => {
   try {
     const { city } = req.params;
@@ -197,7 +313,6 @@ router.get("/sports/:city", async (req, res) => {
       return res.status(404).json({ message: "No sports found for this city" });
     }
 
-    // Flatten and get unique sports
     const sportsSet = new Set();
     academies.forEach((academy) => {
       academy.sports.forEach((sport) => {
